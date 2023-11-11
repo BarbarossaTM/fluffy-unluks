@@ -1,0 +1,149 @@
+#!/bin/sh
+#
+# Unlock LUKS via SSH (on tagged VLAN/bond)
+#
+# Maximilian Wilhelm <max@sdn.clinic>
+#  -- Sun, 3 Nov 2016 21:42:00 +0100
+#
+
+################################################################################
+#                              Configuration                                   #
+################################################################################
+
+# The following two parameters control whether this script considers disks to be
+# unlocked successfully.  At least one of the two variables needs to be set for
+# this to work :)
+
+# Space separated list of block devices to wait for (if any)
+wait_block_devs=""
+
+# Space separated list of LVM VGs to wait for (if any)
+wait_vgs=""
+
+
+# The following parameter control the network configuration applied within the
+# initrd, so you are able to access the machine to unlock its disks.
+
+# Physical NIC (e.g. eth0, enp1s0, ...) for a plain setup or name of the bonding
+# interface to use (e.g. bond0), if a LAG shall be assembled.  If a LAG iface is
+# to be used, bond_members also needs to be set.
+iface=""
+
+# Physical LAG member interface(s), if an 802.3ad/LACP LAG is desired (optional)
+bond_members=""
+
+# If the interface to this machine carries multiple VLANs, the desired VLAN for
+# administrative access can be configured by setting the VLAN ID here.
+# It will be configured on top of $iface configured above. (optional)
+vlan_id=""
+
+# The IP/netmask to be assigned to $iface (CIDR notation)
+ip=""
+
+# The default gateway to use, if any (optional)
+gateway=""
+
+# The safeword, which can be appened to the Kernel commmand line on boot-up to
+# disable this script and use the regular interactive means of unlocking the
+# disks. (optional)
+safeword="red"
+
+################################################################################
+# 
+################################################################################
+
+
+# Usual header...
+if [ "$1" = "prereqs" ]; then
+	# Make sure the RAIDs have already been assembled
+	echo "mdadm"
+	exit 0
+fi
+
+# Kill-switch given on cmdline?
+if [ "${safeword}" ] && grep -q "${safeword}" /proc/cmdline; then
+	echo "No magic today - as you requested."
+	exit 0
+fi
+
+
+# Just in case
+modprobe dm_mod
+
+# Configure network interfaces
+if [ "${bond_members}" ]; then
+	modprobe bonding mode=4
+	ip link add "${iface}" type bond mode 4
+	for member in "${bond_members}"; do
+		ip link set master "${iface}" dev "${member}"
+		ip link set "${member}" up
+	done
+	ip link set "${iface}" up
+fi
+
+if [ "${vlan_id}" ]; then
+	modprobe 8021q
+	vconfig add "${iface}" "${vlan_id}"
+	ip link set "${iface}" up
+	ip link set "${iface}.${vlan_id}" up
+	ip addr add "${ip}" dev "${iface}.${vlan_id}"
+
+else
+	ip link set "${iface}" up
+	ip addr add "${ip}" dev "${iface}"
+fi
+
+sleep 3
+
+if [ "${gateway}" ]; then
+	ip r a default via "${gateway}"
+fi
+
+
+# Create SSH priviledge separation dir
+mkdir -p /run/sshd
+chmod 755 /run/sshd
+
+# Start ssh server (in background)
+/usr/sbin/sshd -D &
+ssh_pid=$!
+
+
+all_block_dev_present() {
+	for dev in ${wait_block_devs}; do
+		if [ ! -b "${dev}" ]; then
+			return 1
+		fi
+	done
+
+	return 0
+}
+
+all_vgs_present() {
+	for vg in ${wait_vgs}; do
+		if ! lvm vgs | grep -q "${vg}"; then
+			return 1
+		fi
+	done
+
+	return 0
+}
+
+# Wait for block devices and VGs to turn up
+echo "Waiting for someone to unlock the hard drive... You know how, don't you?"
+while ! all_block_dev_present || ! all_vgs_present; do
+	sleep 3
+done
+
+# Kill ssh daemon which will be restarted in the real system
+kill ${ssh_pid}
+killall sshd # FIXME does with work without killall, too?
+
+# Tear down temporary network interface(s)
+if [ "${bond_members}" ]; then
+	ip link del "${iface}"
+elif [ "${vlan_id}" ]; then
+	vconfig rem "${iface}"."${vlan_id}"
+else
+	ip addr flush "${iface}"
+fi
