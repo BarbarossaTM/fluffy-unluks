@@ -107,7 +107,7 @@ cp /lib/x86_64-linux-gnu/libnss_files* "${DESTDIR}/lib/x86_64-linux-gnu"
 
 
 ################################################################################
-#                   Write convenience unlock script to /go                     #
+#                 Write convenience unlock script to /unluks                   #
 ################################################################################
 
 # Uncomment - and most likely edit - the following lines to add a convenience
@@ -115,9 +115,9 @@ cp /lib/x86_64-linux-gnu/libnss_files* "${DESTDIR}/lib/x86_64-linux-gnu"
 #
 # For full convencience you can also change the root line of /etc/passwd above
 # to:
-# root:x:0:0:root:/root:/bin/sh
+# root:x:0:0:root:/root:/unluks
 
-# cat << SCRIPT > "${DESTDIR}/go"
+# cat << SCRIPT > "${DESTDIR}/unluks"
 # #!/bin/sh
 #
 # cryptsetup luksOpen /dev/md1 md1_crypt
@@ -131,6 +131,6 @@ cp /lib/x86_64-linux-gnu/libnss_files* "${DESTDIR}/lib/x86_64-linux-gnu"
 # echo "Cool thanks, booting..."
 # SCRIPT
 #
-# chmod 755 "${DESTDIR}/go"
+# chmod 755 "${DESTDIR}/unluks"
 
 exit 0
