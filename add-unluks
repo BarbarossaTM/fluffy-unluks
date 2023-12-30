@@ -72,7 +72,7 @@ copy_exec /bin/killall
 
 # Generate minimal NSS files
 cat << PASSWD > "${DESTDIR}/etc/passwd"
-root:x:0:0:root:/root:/go
+root:x:0:0:root:/root:/bin/sh
 sshd:*:27:27:sshd privsep:/var/empty:/sbin/nologin
 PASSWD
 
@@ -112,6 +112,10 @@ cp /lib/x86_64-linux-gnu/libnss_files* "${DESTDIR}/lib/x86_64-linux-gnu"
 
 # Uncomment - and most likely edit - the following lines to add a convenience
 # "shell" when you log in via SSH to unlock the disks.
+#
+# For full convencience you can also change the root line of /etc/passwd above
+# to:
+# root:x:0:0:root:/root:/bin/sh
 
 # cat << SCRIPT > "${DESTDIR}/go"
 # #!/bin/sh
