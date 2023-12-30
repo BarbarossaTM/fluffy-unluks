@@ -110,20 +110,23 @@ cp /lib/x86_64-linux-gnu/libnss_files* "${DESTDIR}/lib/x86_64-linux-gnu"
 #                   Write convenience unlock script to /go                     #
 ################################################################################
 
-cat << SCRIPT > "${DESTDIR}/go"
-#!/bin/sh
+# Uncomment - and most likely edit - the following lines to add a convenience
+# "shell" when you log in via SSH to unlock the disks.
 
-cryptsetup luksOpen /dev/md1 md1_crypt
-cryptsetup luksOpen /dev/md2 md2_crypt
-cryptsetup luksOpen /dev/md3 md3_crypt
-
-lvm pvscan
-
-vgchange -ay
-
-echo "Cool thanks, booting..."
-SCRIPT
-
-chmod 755 "${DESTDIR}/go"
+# cat << SCRIPT > "${DESTDIR}/go"
+# #!/bin/sh
+#
+# cryptsetup luksOpen /dev/md1 md1_crypt
+# cryptsetup luksOpen /dev/md2 md2_crypt
+# cryptsetup luksOpen /dev/md3 md3_crypt
+#
+# lvm pvscan
+#
+# vgchange -ay
+#
+# echo "Cool thanks, booting..."
+# SCRIPT
+#
+# chmod 755 "${DESTDIR}/go"
 
 exit 0
